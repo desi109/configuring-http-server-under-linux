@@ -1,0 +1,90 @@
+01: Set up and configure the router
+====================================
+     
+      - Change the hostname to 'router':
+sudo hostnamectl set-hostname router
+
+
+
+      - Change the client host name in /etc/hosts file:     127.0.0.1    localhost  
+                                                            127.0.1.1    router
+sudo vi /etc/hosts
+sudo cat /etc/hosts
+exit
+exit
+        
+        
+      - Upgrade and update:
+sudo apt-get upgrade && sudo apt-get update
+
+      - Install openssh:
+sudo apt install  openssh-server man manpages manpages-dev nano
+        
+        
+      - List enabled network interface adapters:
+ifconfig
+      - List all network interface adapters:
+ifcongig -a
+
+      - Give ip address to the new Internal Interface adapters in order to connect via neta and netb:
+sudo vi /etc/network/interfaces
+
+========================/etc/network/interfaces==========================================
+# This file describes the network interfaces avaliable on your system
+# and how to activate them. For mor information, see interfaces(5).
+
+source /etc/network/interfaces.d/*
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primery network interface
+auto enp0s3
+iface enp0s3 inet dhcp
+
+# The internal interface for neta
+auto enp0s8
+iface enp0s8 inet static
+        address 192.168.1.1
+        netmask 255.255.255.0
+        network 192.168.1.0
+        broadcast 192.168.1.255
+        
+        
+# The internal interface for netb
+auto enp0s9
+iface enp0s9 inet static
+        address 192.168.2.2
+        netmask 255.255.255.0
+        network 192.168.2.0
+        broadcast 192.168.2.255
+==========================================================================================
+      
+      - Check if everything is configured:    
+sudo cat /etc/network/interfaces 
+
+      - Run next command to re-enable ifupdown on the system:
+sudo apt install ifupdown 
+
+      - Reboot system to start the new configuration:
+sudo reboot
+
+      - To list enabled interfaces: 
+ifconfig 
+
+      - To list all interfaces: 
+ifconfig -a
+
+      - To list interface 'enp0s8': 
+ifconfig enp0s8
+
+
+     - Turn the linux VM from host to a router:
+sudo vi /etc/sysctl.conf
+      - Uncomment line "net.ipv4.ip_forward=1"
+      - Reboot system to start the new configuration:
+sudo reboot
+
+ 
+        

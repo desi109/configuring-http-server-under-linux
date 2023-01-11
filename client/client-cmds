@@ -1,0 +1,137 @@
+01: Set up and configure the client
+====================================
+     
+      - Change the hostname to 'client':
+sudo hostnamectl set-hostname client
+
+
+
+      - Change the client host name in /etc/hosts file:     127.0.0.1    localhost  
+                                                            127.0.1.1    client
+sudo vi /etc/hosts
+sudo cat /etc/hosts
+exit
+exit
+        
+        
+      - Upgrade and update:
+sudo apt-get upgrade && sudo apt-get update
+
+      - Install openssh:
+sudo apt install  openssh-server man manpages manpages-dev nano
+
+
+      - Install net-tools in order to use command 'ifconfig':
+sudo apt-get install net-tools
+
+      - List enabled network interface adapters:
+ifconfig
+      - List all network interface adapters:
+ifcongig -a
+
+      - Give ip address to the new Internal Interface adapter in order to connect via neta:
+sudo vi /etc/network/interfaces
+
+========================/etc/network/interfaces==========================================
+# This file describes the network interfaces avaliable on your system
+# and how to activate them. For mor information, see interfaces(5).
+
+source /etc/network/interfaces.d/*
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primery network interface
+auto enp0s3
+iface enp0s3 inet dhcp
+
+# The internal interface for neta
+auto enp0s8
+iface enp0s8 inet static
+        address 192.169.1.11
+        netmask 255.255.255.0
+        network 192.168.1.0
+        broadcast 192.168.1.255
+        post-up route add -net 192.168.0.0 netmask 255.255.0.0 gw 192.168.1.1dev enp0s8
+        pre-down route del -net 192.168.0.0 netmask 255.255.0.0 gw 192.168.1.1dev enp0s8
+==========================================================================================
+      
+      - Check if everything is configured:    
+sudo cat /etc/network/interfaces 
+
+      - Run next command to re-enable ifupdown on the system:
+sudo apt install ifupdown 
+
+      - Reboot system to start the new configuration:
+sudo reboot
+
+      - To list enabled interfaces: 
+ifconfig 
+
+      - To list all interfaces: 
+ifconfig -a
+
+      - To list interface 'enp0s8': 
+ifconfig enp0s8
+
+      - Try connection from client to the server:
+ping 192.168.2.22
+
+      - Log in to the server with ssh:
+ssh server@192.168.2.22
+
+      - Log out from server connection:
+exit
+
+========================================================================
+02: Install Appache HTTP Web Server
+====================================
+
+      - After install of Appache HTTP Web Server on the server try to connect.
+        Open browser and connect to 'http://192.168.2.22'.
+        
+        OR
+        
+      - After install of Appache HTTP Web Server on the server try to connect.
+        Install text based web browser lynx and connect to 'http://192.168.2.22':
+sudo apt install lynx
+lynx http://192.168.2.22
+
+
+========================================================================
+03: Configure DNS mapping
+==========================
+
+      - Add domain name for the server by edit /etc/hosts file:   127.0.0.1      localhost  
+sudo vi /etc/hosts                                                127.0.1.1      client
+                                                                  192.168.2.22   www.example.com
+       
+      - Open browser and connect to 'http://www.example.com'.
+        
+        OR
+        
+      - Try to connect to 'http://www.example.com' via lynx:
+lynx http://www.example.com
+
+
+========================================================================
+9: Testing:
+=============
+
+scp server@192.168.2.22:/home/server/cert-ourca.crt .
+ls
+sudo mkdir /usr/share/ca-certificates/extra
+sudo cp cert-ourca.crt /usr/share/ca-certificates/extra/
+sudo dpkg-reconfigure ca-certificates
+
+
+       
+      - Open browser and connect secure to 'https://www.example.com'.
+        
+        OR
+        
+      - Try to connect secure to 'https://www.example.com' via lynx:
+lynx https://www.example.com
+
+

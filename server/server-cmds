@@ -1,0 +1,233 @@
+01: Set up and configure the server
+====================================
+     
+      - Change the hostname to 'server':
+sudo hostnamectl set-hostname server
+
+
+
+      - Change the client host name in /etc/hosts file:     127.0.0.1    localhost  
+                                                            127.0.1.1    server
+sudo vi /etc/hosts
+sudo cat /etc/hosts
+exit
+exit
+        
+        
+      - Upgrade and update:
+sudo apt-get upgrade && sudo apt-get update
+
+      - Install openssh:
+sudo apt install  openssh-server man manpages manpages-dev nano
+
+
+      - List enabled network interface adapters:
+ifconfig
+      - List all network interface adapters:
+ifcongig -a
+
+      - Give ip address to the new Internal Interface adapter in order to connect via netb:
+sudo vi /etc/network/interfaces
+
+========================/etc/network/interfaces==========================================
+# This file describes the network interfaces avaliable on your system
+# and how to activate them. For mor information, see interfaces(5).
+
+source /etc/network/interfaces.d/*
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primery network interface
+auto enp0s3
+iface enp0s3 inet dhcp
+     
+# The internal interface for netb
+auto enp0s8
+iface enp0s8 inet static
+        address 192.169.2.22
+        netmask 255.255.255.0
+        network 192.168.2.0
+        broadcast 192.168.2.255
+        post-up route add -net 192.168.0.0 netmask 255.255.0.0 gw 192.168.2.2 dev enp0s8
+        pre-down route del -net 192.168.0.0 netmask 255.255.0.0 gw 192.168.2.2 dev enp0s8
+==========================================================================================
+      
+      - Check if everything is configured:    
+sudo cat /etc/network/interfaces 
+
+      - Run next command to re-enable ifupdown on the system:
+sudo apt install ifupdown 
+
+      - Reboot system to start the new configuration:
+sudo reboot
+
+      - To list enabled interfaces: 
+ifconfig 
+
+      - To list all interfaces: 
+ifconfig -a
+
+      - To list interface 'enp0s8': 
+ifconfig enp0s8
+
+
+========================================================================
+02: Install Appache HTTP Web Server
+====================================
+
+      - Install Appache HTTP Web Server on the server : 
+sudo apt install apache2
+
+
+========================================================================
+04: Configurations for the Web Server
+=======================================
+
+      - Open '/var/www/html' which conteins the web page/content for a website:
+cd  /var/www/html
+ls
+less index.html
+
+
+
+      - Open '/etc/apache2' which conteins the global configuration for the web server:
+cd  /etc/apache2
+ls
+less apache2.conf
+
+
+
+      - Open '/etc/apache2/sites-available' which conteins the main configuration for
+        the web server as ServerAdmin (the email address for the administrator),
+        DocumentRoot (where is the root directory for the web server),
+        ErrorLog and CustomLog (location of the logs) :
+cd  /etc/apache2/sites-available
+ls
+vi 000-default.conf
+      - If you want to edit this file run the command with sudo, otherwise it will be read-only:
+sudo vi 000-default.conf
+
+
+
+      - File which contains configuration for the HTTPs setup:
+cat /etc/apache2/sites-available/default-ssl.conf  
+
+
+
+      - Folder which contains additional featurea and modules for the Apache 
+        (e.g. cache_disk.load, proxy.conf, etc.):
+cd /etc/apache2/mods-available/
+ls
+
+
+      - Folder which contains the Apache logs 
+        (e.g. access.log contains the request/response information for the website, 
+         error.log contains information about the errors):
+cd /var/logs/apache2/ 
+ls
+
+
+========================================================================
+05: Configure HTTPs
+====================
+      - Set up Apache to support HTTPs so web browsers can connect to it in a 
+        secure manner using HTTPs. 
+
+      - Create a certificate for authority:
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -pkeyopt rsa_keygen_pubexp:65537 -out cakey.pem
+ls -l cakey.pem
+
+      - Now the autority needs to sign their own certificates:
+openssl req -new -x509 -key cakey.pem -out cacert.pem -days 1095
+ls -l
+
+
+========================================================================
+06: Configure directories:
+===========================
+
+cd ~/
+mkdir demoCA
+mkdir demoCA/certs
+mkdir demoCA/crl
+mkdir demoCA/newcerts
+mkdir demoCA/private 
+touch demoCA/index.txt
+echo 02 > demoCA/serial
+mv cacert.pem demoCA/
+mv cakey.pem demoCA/private/
+    
+      - Change next parameters to optional:     # For the CA policy
+sudo vi /usr/lib/ssl/openssl.cnf                stateOrProvinceName  = optional
+                                                organizationName     = optional
+                                                
+      - List directories:                               
+ls 
+
+
+========================================================================
+07: Create key pairs:
+======================
+
+      - Create a key pair for the server:
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -pkeyopt rsa_keygen_pubexp:65537 -out privkey-www.example.com.pem
+
+      - Generate all needed certificates:
+openssl req -new -key privkey-www.example.com.pem -out certreq-www.example.com.csr
+ls -l
+
+openssl ca -in certreq-www.example.com.csr -out cert-www.example.com.pem
+ls -l
+
+cp demoCA/cacert.pem cert-ourca.crt
+ls -l
+
+      - Setup Apache to use these certificates:
+openssl verify -CAfile cert-ourca.crt cert-www.example.com.pem
+
+
+------> cert-www.example.com.pem ---> certificate of the website
+------> cert-ourca.crt ---> certificate of the certificate authority 
+
+
+========================================================================
+08: Create key pairs:
+======================
+
+      - Configure Apache to support these certificates, so first move them
+        in directories which Apache is going to read by deafult:
+sudo cp cert-www.example.com.pem /etc/ssl/certs/
+sudo cp cert-ourca.crt /etc/ssl/certs/
+sudo cp privkey-www.example.com.pem /etc/ssl/private/
+ls -l /etc/ssl
+
+
+      - Configure Apache to use HTTPs:
+cd /etc/apache2/sites-available
+ls
+sudo vi default-ssl.conf
+      - There should be added:   ServerName   www.example.com:443
+      - And comment lines: SSLCertificateFile  and  SSLCertificateKeyFile
+      - Add next three lines:  SSLCertificateFile      /etc/ssl/certs/cert-www.example.com.pem
+                               SSLCertificateKeyFile   /etc/ssl/private/privkey-www.example.com.pem
+                               SSLCACertificateFile    /etc/ssl/certs/cert-ourca.crt
+                               
+cd ..
+ls
+      - Enable Apache SSL module:
+sudo a2enmod ssl
+sudo a2ensite default-ssl
+sudo systemctl reload apache2
+
+
+
+
+
+
+
+
+
+
+
